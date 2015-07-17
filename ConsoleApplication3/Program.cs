@@ -12,15 +12,16 @@ namespace ConsoleApplication3
 {
     class Program
     {
-
-        public static void Main()
+        public static string Get_info(string inn,string account)
         {
-            string inn = "2044713906";
-            string account = "44410551";
-            string card = "0082";
+            string card = null;
+            if (account.Length == 4)
+            {
+                card = account;
+                account = null;
+            }
             string ws_link = "http://d-imb-mwact:8011/USERVICES/proxy-service/dealdata";
             XNamespace soapenv = "http://schemas.xmlsoap.org/soap/envelope/";
-            //XNamespace cab = "https://edwdevel/cabinet/";
             XNamespace cab = ws_link;
             var requestXML = new XDocument(
                     new XElement(soapenv + "Envelope",
@@ -29,18 +30,99 @@ namespace ConsoleApplication3
                     new XElement(soapenv + "Body",
                     new XElement(cab + "cardinfo",
                             new XElement("inn", inn),
-                            /*new XElement("accountno", "44410551")*/
+                            new XElement("accountno", account),
                             new XElement("card",card)))));
-            XmlDocument doc1 = new XmlDocument();
-            //doc1.LoadXml(requestXML.ToString());
-            //Console.WriteLine(requestXML);
-
-            //HttpWebRequest request = ConsoleApplication3.Program.CreateWebRequest();
+            
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(@ws_link);
-            //HttpWebRequest request = (HttpWebRequest)WebRequest.Create(@"https://edwdevel/cabinet/index.php");
-            //Trust all certificates
-            System.Net.ServicePointManager.ServerCertificateValidationCallback =
-                ((sender, certificate, chain, sslPolicyErrors) => true);
+            request.Headers.Add(@"Soap:Envelope");
+            request.ContentType = "text/xml;charset=\"utf-8\"";
+            request.Accept = "text/xml";
+            request.Method = "POST";
+            string ECA ;
+            string ECA_Number;
+            string credit_check_kab;
+            string GiveAllowDate1;
+            string firstrepaydate;
+            string Requisites_Check;
+            string dealstate;
+            string Credit_Type;
+            string Next_Payment;
+            string Next_Payment_Date;
+            string Payment_Interval;
+            string Appeal_Date;
+            string EDPROU;
+            string Fullrepayment;
+            string dealno;
+            string corraccountno;
+            string deal_date;
+            string errorCode;
+
+            using (Stream stream = request.GetRequestStream())
+            {
+                requestXML.Save(stream);
+            }
+
+            using (WebResponse response = request.GetResponse())
+            {
+                using (StreamReader rd = new StreamReader(response.GetResponseStream()))
+                {
+                    string soapResult = rd.ReadToEnd();
+                    XDocument doc = XDocument.Parse(soapResult);
+
+                    //Console.WriteLine(soapEnvelopeXml.ToString());
+
+                    ECA = doc.Descendants("ECA").FirstOrDefault().Value;
+                    ECA_Number = doc.Descendants("ECA_Number").FirstOrDefault().Value;
+                    credit_check_kab = doc.Descendants("credit_check_kab").FirstOrDefault().Value;
+                    GiveAllowDate1 = doc.Descendants("GiveAllowDate1").FirstOrDefault().Value;
+                    firstrepaydate = doc.Descendants("firstrepaydate").FirstOrDefault().Value;
+                    Requisites_Check = doc.Descendants("Requisites_Check").FirstOrDefault().Value;
+                    dealstate = doc.Descendants("dealstate").FirstOrDefault().Value;
+                    Credit_Type = doc.Descendants("Credit_Type").FirstOrDefault().Value;
+                    Next_Payment = doc.Descendants("Next_Payment").FirstOrDefault().Value;
+                    Next_Payment_Date = doc.Descendants("Next_Payment_Date").FirstOrDefault().Value;
+                    Payment_Interval = doc.Descendants("Payment_Interval").FirstOrDefault().Value;
+                    Appeal_Date = doc.Descendants("Appeal_Date").FirstOrDefault().Value;
+                    EDPROU = doc.Descendants("EDPROU").FirstOrDefault().Value;
+                    Fullrepayment = doc.Descendants("Fullrepayment").FirstOrDefault().Value;
+                    dealno = doc.Descendants("dealno").FirstOrDefault().Value;
+                    corraccountno = doc.Descendants("corraccountno").FirstOrDefault().Value;
+                    deal_date = doc.Descendants("deal_date").FirstOrDefault().Value;
+                    errorCode = doc.Descendants("errorCode").FirstOrDefault().Value;
+                }
+            }
+            string result = ECA + "|" + ECA_Number + "|" + credit_check_kab + "|" + GiveAllowDate1 + "|" + firstrepaydate + "|" + Requisites_Check + "|" + dealstate + "|" + Credit_Type
+                    + "|" + Next_Payment + "|" + Next_Payment_Date + "|" + Payment_Interval + "|" + Appeal_Date + "|" + EDPROU + "|" + Fullrepayment + "|" + dealno
+                    + "|" + corraccountno + "|" + deal_date + "|" + errorCode;
+            return result;
+        }
+
+        public static void Main()
+        {
+            /*
+            string inn = "2044713906";
+            string account = "0082";
+            string card = null;
+
+            if (account.Length == 4) { 
+                    card = account;
+                    account = null;
+            }
+
+            string ws_link = "http://d-imb-mwact:8011/USERVICES/proxy-service/dealdata";
+            XNamespace soapenv = "http://schemas.xmlsoap.org/soap/envelope/";
+            XNamespace cab = ws_link;
+            var requestXML = new XDocument(
+                    new XElement(soapenv + "Envelope",
+                    new XAttribute(XNamespace.Xmlns + "soapenv", soapenv),
+                    new XElement(soapenv + "Header"),
+                    new XElement(soapenv + "Body",
+                    new XElement(cab + "cardinfo",
+                            new XElement("inn", inn),
+                            new XElement("accountno", account),
+                            new XElement("card",card)))));
+            
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(@ws_link);
             request.Headers.Add(@"Soap:Envelope");
             request.ContentType = "text/xml;charset=\"utf-8\"";
             request.Accept = "text/xml";
@@ -104,7 +186,15 @@ namespace ConsoleApplication3
 
                     Console.ReadLine();
                 }
-            }
+            }*/
+
+            string result = Get_info("2044713906", "44410551");
+            Console.WriteLine("------------by account no------------");
+            Console.WriteLine(result);
+            result = Get_info("2044713906", "0082");
+            Console.WriteLine("-----------by card no-------------");
+            Console.WriteLine(result);
+            Console.ReadLine();
         }
         
         
