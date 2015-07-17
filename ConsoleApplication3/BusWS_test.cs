@@ -191,7 +191,7 @@ namespace ConsoleApplication3
             string result = Get_info("2044713906", "44410551");
             Console.WriteLine("------------by account no------------");
             Console.WriteLine(result);
-            result = Get_info("2044713906", "0081");
+            result = Get_info("2044713906", "0082");
             Console.WriteLine("-----------by card no-------------");
             Console.WriteLine(result);
             Console.ReadLine();
