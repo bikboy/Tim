@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+//using System.Threading.Tasks;
 using System.Net;
 using System.IO;
 using System.Xml;
@@ -57,11 +57,17 @@ namespace ConsoleApplication3
             string deal_date;
             string errorCode;
 
-            using (Stream stream = request.GetRequestStream())
+            
+            /*using (Stream stream = request.GetRequestStream())
             {
-                requestXML.Save(stream);
+                //requestXML.Save(stream);
             }
-
+            */
+            using (var writer = XmlWriter.Create(request.GetRequestStream()))
+            {
+                requestXML.Save(writer);
+            }
+            request.GetRequestStream().Close();
             using (WebResponse response = request.GetResponse())
             {
                 using (StreamReader rd = new StreamReader(response.GetResponseStream()))
