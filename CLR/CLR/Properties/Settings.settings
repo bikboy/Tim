@@ -1,0 +1,9 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="CLR.Properties" GeneratedClassName="Settings">
+  <Profiles />
+  <Settings>
+    <Setting Name="CLR_clinfo_client_info" Type="(Web Service URL)" Scope="Application">
+      <Value Profile="(Default)">http://10.155.101.57/clservice/Service1.svc</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>
