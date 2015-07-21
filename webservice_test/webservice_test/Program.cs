@@ -103,6 +103,44 @@ namespace ConsoleApplication3
             return result;
         }
 
+        public static string check_inn(string inn)
+        {
+            string ws_link = "http://d-imb-mwact:8011/USERVICES/proxy-service/checks/?wsdl";
+            XNamespace soapenv = "http://schemas.xmlsoap.org/soap/envelope/";
+            XNamespace cab = ws_link;
+            var requestXML = new XDocument(
+                    new XElement(soapenv + "Envelope",
+                    new XAttribute(XNamespace.Xmlns + "soapenv", soapenv),
+                    new XElement(soapenv + "Header"),
+                    new XElement(soapenv + "Body",
+                    new XElement(cab + "checkInn",
+                            new XElement("inn", inn)))));
+
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(@ws_link);
+            request.Headers.Add(@"Soap:Envelope");
+            request.ContentType = "text/xml;charset=\"utf-8\"";
+            request.Accept = "text/xml";
+            request.Method = "POST";
+
+            string result;
+
+            using (var writer = XmlWriter.Create(request.GetRequestStream()))
+            {
+                requestXML.Save(writer);
+            }
+            request.GetRequestStream().Close();
+            using (WebResponse response = request.GetResponse())
+            {
+                using (StreamReader rd = new StreamReader(response.GetResponseStream()))
+                {
+                    string soapResult = rd.ReadToEnd();
+                    XDocument doc = XDocument.Parse(soapResult);
+                    result = doc.Descendants("result").FirstOrDefault().Value;
+                }
+            }
+            return result;
+        }
+
         public static void Main()
         {
             /*
@@ -201,6 +239,11 @@ namespace ConsoleApplication3
             string result2 = Get_info("2044713906", "44410551");
             Console.WriteLine("-----------by card no-------------");
             Console.WriteLine(result2);
+            
+
+
+            string result3 = check_inn("2044713906");
+            Console.WriteLine(result3);
             Console.ReadLine();
         }
 
