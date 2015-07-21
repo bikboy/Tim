@@ -133,10 +133,16 @@ namespace CLR
                     errorCode = doc.Descendants("errorCode").FirstOrDefault().Value;
                 }
             }
-            SqlString result = ECA + "|" + ECA_Number + "|" + credit_check_kab + "|" + GiveAllowDate1 + "|" + firstrepaydate + "|" + Requisites_Check + "|" + dealstate + "|" + Credit_Type
+            /*SqlString result = ECA + "|" + ECA_Number + "|" + credit_check_kab + "|" + GiveAllowDate1 + "|" + firstrepaydate + "|" + Requisites_Check + "|" + dealstate + "|" + Credit_Type
                     + "|" + Next_Payment + "|" + Next_Payment_Date + "|" + Payment_Interval + "|" + Appeal_Date + "|" + EDPROU + "|" + Fullrepayment + "|" + dealno
                     + "|" + corraccountno + "|" + deal_date + "|" + id_deal + "|" + on_date + "|" + status_date + "|" + credit_check + "|" + daysoverdue + "|" + last_payment + "|" + Last_Payment_Date + "|"
-                    + currmonth_payments + "|" + Identifycode + "|" + first_usage + "|" + card_lastdiggits + "|" + errorCode;
+                    + currmonth_payments + "|" + Identifycode + "|" + first_usage + "|" + card_lastdiggits + "|" + errorCode;*/
+
+            SqlString result = id_deal + "|" + on_date + "|" + Fullrepayment + "|" + dealno + "|" + status_date + "|" + credit_check + "|" + GiveAllowDate1 + "|" + daysoverdue
+                    + "|" + dealstate + "|" + firstrepaydate + "|" + Credit_Type + "|" + last_payment + "|" + Last_Payment_Date + "|" + currmonth_payments + "|" + corraccountno
+                    + "|" + Identifycode + "|" + Requisites_Check + "|" + Next_Payment + "|" + Payment_Interval + "|" + Appeal_Date + "|" + Next_Payment_Date + "|" + ECA_Number
+                    + "|" + EDPROU + "|" + ECA + "|" + credit_check_kab + "|" + deal_date + "|" + errorCode + "|" + first_usage + "|" + card_lastdiggits;
+
             return result;
         }
         [Microsoft.SqlServer.Server.SqlProcedure]
