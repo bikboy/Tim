@@ -185,6 +185,65 @@ namespace CLR
         }
 
         [Microsoft.SqlServer.Server.SqlProcedure]
+        public static string Get_transactions(string inn, string account)
+        {
+            string card = null;
+            if (account.Length == 4)
+            {
+                card = account;
+                account = null;
+            }
+            string ws_link = "http://d-imb-mwact:8011/USERVICES/proxy-service/dealdata";
+            XNamespace soapenv = "http://schemas.xmlsoap.org/soap/envelope/";
+            XNamespace cab = ws_link;
+            var requestXML = new XDocument(
+                    new XElement(soapenv + "Envelope",
+                    new XAttribute(XNamespace.Xmlns + "soapenv", soapenv),
+                    new XElement(soapenv + "Header"),
+                    new XElement(soapenv + "Body",
+                    new XElement(cab + "transactions",
+                            new XElement("inn", inn),
+                            new XElement("accountno", account),
+                            new XElement("card", card)))));
+
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(@ws_link);
+            request.Headers.Add(@"Soap:Envelope");
+            request.ContentType = "text/xml;charset=\"utf-8\"";
+            request.Accept = "text/xml";
+            request.Method = "POST";
+            string trans_date = null;
+            string trans_amount = null;
+
+            using (var writer = XmlWriter.Create(request.GetRequestStream()))
+            {
+                requestXML.Save(writer);
+            }
+            request.GetRequestStream().Close();
+            using (WebResponse response = request.GetResponse())
+            {
+                using (StreamReader rd = new StreamReader(response.GetResponseStream()))
+                {
+                    string soapResult = rd.ReadToEnd();
+                    XDocument doc = XDocument.Parse(soapResult);
+
+                    foreach (XElement element in doc.Descendants("trans_date"))
+                    {
+                        trans_date = trans_date + element.Value + "|";
+                    }
+                    foreach (XElement element in doc.Descendants("trans_amount"))
+                    {
+                        trans_amount = trans_amount + element.Value + "|";
+                    }
+
+
+                }
+            }
+            string result = trans_date + trans_amount;
+            return result;
+        }
+
+
+        [Microsoft.SqlServer.Server.SqlProcedure]
         public static SqlString GetCardInfo(string card, string code)
         {
 
