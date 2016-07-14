@@ -1,0 +1,41 @@
+/*
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+*/
+/* 
+    Created on : Jul 8, 2016, 10:46:59 AM
+    Author     : Timur_Bikbaev
+*/
+#photo {
+    float:right;
+    width: 200px;
+    background-color: black;
+    margin: 20px 20px 0px 0px;
+}
+img#ph {height: 200px;}
+#contact {
+    padding: 5px;
+    float: left;   
+    font-size: 22px;
+}
+#info {
+    padding: 5px;
+    float:left;
+    width:50%;
+    margin:0px 10px;
+    font-size: 25px;
+}
+#skills h1{margin-left:50%;}
+#skills{
+    padding: 5px;
+    float:left;
+    width: 100%;
+    font-size: 17px;
+    
+}
+.skill{
+    float:left;
+    width:11%;
+}
+
