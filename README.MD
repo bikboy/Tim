@@ -1,2 +1,2 @@
-# Simple java EE projects
+# my cv project
 
