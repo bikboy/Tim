@@ -1,7 +1,7 @@
 #!/usr/bin/python
 username = 'timbikbaev'
 password = ''
-url = 'https://fx.stage.wkts.eu'
+url = 'https://somesite.com'
 from contextlib import closing
 from selenium.webdriver import Firefox # pip install selenium
 from selenium.webdriver.support.ui import WebDriverWait
@@ -63,7 +63,7 @@ with closing(Firefox()) as browser:
 
 
      #Creating contact
-     address_book = 'https://fx.stage.wkts.eu/freightexchange.html#contacts:main'
+     address_book = 'https://somesite.com/freightexchange.html#contacts:main'
      browser.get(address_book)
      WebDriverWait(browser, timeout=15).until(
          lambda x: x.find_element_by_id('gwt-debug-contact-list-toolbar-new'))
@@ -82,7 +82,7 @@ with closing(Firefox()) as browser:
      save_button = browser.find_element_by_id('contactSaveButton')
      save_button.click()
 
-     preferences = 'https://fx.stage.wkts.eu/freightexchange.html#settings:settings:main'
+     preferences = 'https://somesite.com/freightexchange.html#settings:settings:main'
      browser.get(preferences)
      WebDriverWait(browser, timeout=15).until(
          lambda x: x.find_element_by_xpath("//select[@class='gwt-ListBox']/option[@value='test user']"))
@@ -91,7 +91,7 @@ with closing(Firefox()) as browser:
      save_settings = browser.find_element_by_id('gwt-debug-settings-save-btn')
      save_settings.click()
 
-     post_offer = 'https://fx.stage.wkts.eu/freightexchange.html#offer:create'
+     post_offer = 'https://somesite.com/freightexchange.html#offer:create'
      browser.get(post_offer)
      WebDriverWait(browser, timeout=15).until(
          lambda x: x.find_element_by_id('gwt-debug-contact-selector'))
@@ -99,7 +99,7 @@ with closing(Firefox()) as browser:
      print(offer_contact.get_attribute('value'))
 
      #SMS history
-     sms_history = 'https://fx.stage.wkts.eu/freightexchange.html#smshistory:main'
+     sms_history = 'https://somesite.com/freightexchange.html#smshistory:main'
      browser.get(sms_history)
      WebDriverWait(browser, timeout=15).until(
          lambda x: x.find_element_by_xpath("//table[@cellspacing='0'][@style='table-layout: fixed; width: 100%;']"))
