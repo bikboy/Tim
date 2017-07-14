@@ -1,0 +1,30 @@
+---
+- hosts: 127.0.0.1
+  connection: local
+  tasks:
+  - name: attaching pass
+    include_vars:
+      file: pass.yml
+  - name: Create a new host or update an existing host's info
+    local_action:
+      module: zabbix_host
+      server_url: http://zabbix-server/zabbix
+      login_user: tbikbaev
+      login_password: "{{ password }}"
+      host_name: zabbix-agent-proxy-1
+      visible_name: zabbix-agent-proxy-1
+      host_groups:
+       - Linux servers
+      link_templates:
+       - Template OS Linux
+      status: disabled
+      state: present
+      inventory_mode: automatic
+      interfaces:
+        - type: 1
+          main: 1
+          useip: 1
+          ip: 172.17.0.4
+          dns: ""
+          port: 10050
+      proxy: zabbix-proxy
