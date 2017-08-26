@@ -5,7 +5,7 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Building..'
-                git branch: 'origin', credentialsId: 'f9b33ec5-ca0c-4bfa-80db-4b6fc2fd2adf', url: 'https://github.com/CluboidLtd/Saas-portal.git'
+                git branch: 'tima.biz.ua', credentialsId: 'bda0291c-1df9-4741-bee2-b472c054c3ed', url: 'https://github.com/bikboy/Tim.git'
                 
             }
         }
