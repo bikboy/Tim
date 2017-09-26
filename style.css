@@ -1,0 +1,9 @@
+#avatar {
+	position: absolute;
+    top: 1%;
+    right: 1%;
+   }
+img#photo {
+	width: 100px;
+	height: auto;
+}
