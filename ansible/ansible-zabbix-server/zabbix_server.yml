@@ -1,0 +1,270 @@
+#title           :zabbix_server.yml
+#description     :This ansible playbook will install zabbix monitoring system
+#author          :Timur Bikbaev
+#date            :20170718
+#version         :0.2
+#usage           :ansible-playbook zabbix_server.yml --ask-vault-pass --ask-sudo-pass
+#notes           :create pass.yml with command "ansible-vault create pass.yml" , content "password: <password>"
+#notes           :you need to change section "vars" accordingly
+#ansible_version :2.3.1+
+#requrements     :python ubuntu 14.04 php 5.6
+#==============================================================================
+---
+- hosts: "{{ variable_host | default('192.168.88.138') }}"
+  sudo: yes
+  tasks:
+  - name: attaching pass
+    include_vars:
+      file: pass.yml
+
+  - name: Install nginx and php-fpm
+    apt:
+      name: "{{ item }}"
+      state: latest
+      update_cache: yes
+    with_items:
+      - nginx
+      - php5-fpm
+#    notify:
+#      - stop apache2 service
+    when: ansible_distribution_major_version == '14'
+
+  - name: Install nginx and php-fpm
+    apt:
+      name: "{{ item }}"
+      state: latest
+      update_cache: yes
+    with_items:
+      - nginx
+      - php-fpm
+      - php-mbstring
+      - php-bcmath
+#    notify:
+#      - stop apache2 service
+    when: ansible_distribution_major_version == '16'
+
+  - name: Install MariaDB repository
+    apt_repository: repo='deb http://ftp.igh.cnrs.fr/pub/mariadb/repo/10.0/ubuntu "{{ ansible_distribution_release }}" main' state=present
+
+  - name: Add repository key to the system
+    apt_key: keyserver=keyserver.ubuntu.com id=0xcbcb082a1bb943db
+  
+  - name: mariadb previous installation remove
+    apt:
+      name: "{{ item }}"
+      state: absent
+      force: yes
+    with_items:
+      - mariadb-server-10.0
+      - mariadb-client-10.0
+
+  - name: mysql installation
+    apt:
+      name: "{{ item }}"
+      state: latest
+      force: yes
+    with_items:
+      - mariadb-server-10.0
+      - mariadb-client-10.0
+      - python-mysqldb
+
+  - name: Update MySQL root password for all root accounts
+    mysql_user: name=root host={{ item }} password={{ mysql_root_pass }} state=present
+    with_items:
+      - "{{ ansible_hostname }}"
+      - 127.0.0.1
+      - ::1
+      - localhost
+ 
+  - name: Copy the root credentials as .my.cnf file
+    template: src=root.cnf.j2 dest=~/.my.cnf mode=0600
+
+  - name: Ensure Anonymous user(s) are not in the database
+    mysql_user: name='' host={{ item }} state=absent
+    with_items:
+      - localhost
+      - "{{ ansible_hostname }}"
+
+  - name: Remove the test database
+    mysql_db: name=test state=absent
+    notify:
+      - Restart MySQL
+  
+  - name: Install Zabbix server
+    apt:  
+      deb: http://repo.zabbix.com/zabbix/3.4/ubuntu/pool/main/z/zabbix/zabbix-server-mysql_3.4.0-1+{{ ansible_distribution_release }}_amd64.deb
+      update_cache: yes
+
+  - name: Install Zabbix frontend
+    apt:
+      deb: http://repo.zabbix.com/zabbix/3.4/ubuntu/pool/main/z/zabbix/zabbix-frontend-php_3.4.0-1+{{ ansible_distribution_release }}_all.deb
+      update_cache: yes
+  
+  - name: Copy frontend conf
+    template: 
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+    with_items:
+      - { src: 'zabbix.conf.php.j2', dest: '/usr/share/zabbix/conf/zabbix.conf.php' }
+      - { src: 'zabbix_nginx.conf', dest: '/etc/nginx/sites-available/default' }
+    when: ansible_distribution_release == 'trusty'
+
+
+  - name: Copy frontend conf(xenial)
+    template:
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+    with_items:
+      - { src: 'zabbix.conf.php.j2', dest: '/usr/share/zabbix/conf/zabbix.conf.php' }
+      - { src: 'zabbix_nginx_xenial.conf', dest: '/etc/nginx/sites-available/default' }
+    when: ansible_distribution_release == 'xenial'
+
+  - name: change nginx conf with xenial php-fpm
+    replace:
+      path: /etc/nginx/sites-available/default
+      regexp: '^.*fastcgi_pass unix:/var/run/php5-fpm.sock;'
+      replace: 'fastcgi_pass unix:/run/php/php7.0-fpm.sock;'
+    when: ansible_distribution_release == 'xenial'
+
+  - name: change php.ini
+    replace:
+      path: /etc/php5/fpm/php.ini
+      regexp: "{{ item.regexp }}"
+      replace: "{{ item.replace }}"
+      backup: no
+    with_items:
+      - { regexp: '(?<=^;date.timezone =)(.*)', replace: ' America/New_York' }
+      - { regexp: '(?<=^post_max_size =)(.*)', replace: ' 16M' }
+      - { regexp: '(?<=^max_execution_time =)(.*)', replace: ' 300' }
+      - { regexp: '(?<=^max_input_time =)(.*)', replace: ' 300' }
+    notify:
+      - restart php-fpm
+      - restart nginx
+    when: ansible_distribution_major_version == '14'
+
+  - name: change php.ini
+    replace:
+      path: /etc/php/7.0/fpm/php.ini
+      regexp: "{{ item.regexp }}"
+      replace: "{{ item.replace }}"
+      backup: no
+    with_items:
+      - { regexp: '(?<=^;date.timezone =)(.*)', replace: ' America/New_York' }
+      - { regexp: '(?<=^post_max_size =)(.*)', replace: ' 16M' }
+      - { regexp: '(?<=^max_execution_time =)(.*)', replace: ' 300' }
+      - { regexp: '(?<=^max_input_time =)(.*)', replace: ' 300' }
+    notify:
+      - restart php-fpm
+      - restart nginx
+    when: ansible_distribution_major_version == '16'
+
+  - name: "MySQL | Create database"
+    mysql_db: name=zabbix
+      state=present
+      encoding=utf8
+      collation=utf8_bin
+    register: db_created
+ 
+  - name: Restore zabbix default database
+    mysql_db:
+      name: zabbix
+      state: import
+      target: /usr/share/doc/zabbix-server-mysql/create.sql.gz
+    when: db_created.changed
+
+  - name: change Zabbix conf
+    replace:
+      path: /etc/zabbix/zabbix_server.conf
+      regexp: '^DBUser=zabbix'
+      replace: 'DBUser=root'
+      backup: no
+
+  - name: add DB pass to conf
+    lineinfile:
+      path: /etc/zabbix/zabbix_server.conf
+      insertafter: '^DBUser=root'
+      line: 'DBPassword={{ mysql_root_pass }}'
+  
+  - name: Copy users dump file
+    copy:
+      src: users.sql
+      dest: /tmp
+    when: db_created.changed  
+
+  - name: Restore zabbix default database
+    mysql_db:
+      name: zabbix
+      state: import
+      target: /tmp/users.sql
+    when: db_created.changed
+
+  - name: start zabbix-server
+    service: name=zabbix-server state=started     
+  
+#  - name: stop apache2
+#    service: name=apache2 state=stopped enabled=no
+  
+  - name: start nginx
+    service: name=nginx state=restarted 
+ 
+
+#  - name: Auth at server API
+#    sudo: no
+#    delegate_to: 127.0.0.1
+#    uri:
+#      url: http://{{ server }}/api_jsonrpc.php
+#      method: POST
+#      body:
+#        jsonrpc: 2.0
+#        method: user.login
+#        params:
+#          user: "{{ user }}"
+#          password: "{{ password }}"
+#        id: 1
+#        auth: null
+#      body_format: json
+#    register: token
+
+#  - name: Debug
+#    debug:
+#      msg: Token is "{{ token.json.result }}"
+
+#  - name: Import existing templates
+#    sudo: no
+#    delegate_to: 127.0.0.1
+#    uri:
+#      url: http://{{ server }}/api_jsonrpc.php
+#      method: POST
+#      body:
+#        method: configuration.import
+#        params:
+#          format: xml
+#          rules:
+#            templastes:
+#              createMissing: true
+#              updateExisting: false
+#          source: "{{ lookup('file', templates/templates.xml) }}"
+#        id: 1
+#        auth: "{{ token.json.result }}"
+#        jsonrpc: 2.0
+#      body_format: json
+#    register: import_templates
+
+
+
+ 
+  handlers:
+    - name: restart nginx
+      service: name=nginx state=restarted
+    - name: restart php5-fpm
+      service: name=php5-fpm state=restarted
+      when: ansible_distribution_major_version == '14'
+    - name: restart php-fpm
+      service: name=php7.0-fpm state=restarted
+      when: ansible_distribution_major_version == '16'
+#    - name: stop apache2 service
+#      service: name=apache2 state=stopped enabled=no
+#      register: command_result
+#      failed_when: "unused_disable|failed and ('find' not in unused_disable.msg and 'service not found' not in unused_disable.msg)"
+    - name: Restart MySQL
+      service: name=mysql state=restarted

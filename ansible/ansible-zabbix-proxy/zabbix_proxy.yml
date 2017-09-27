@@ -1,0 +1,183 @@
+#title           :zabbix_proxy.yml
+#description     :This ansible playbook will install zabbix proxy server
+#author          :Timur Bikbaev
+#date            :20170718
+#version         :0.3
+#usage           :ansible-playbook zabbix_proxy.yml -e "server=<zabbixIP> name=<proxy name>" --ask-vault-pass --ask-sudo-pass
+#notes           :create pass.yml with command "ansible-vault create pass.yml" , content "password: <password>"
+#notes           :you need to change section "vars" accordingly
+#ansible_version :2.3.1+
+#requrements     :python ubuntu 14.04 php 5.6
+#==============================================================================
+---
+- hosts: "{{ variable_host | default('192.168.88.136') }}"
+  sudo: yes
+  tasks:
+  - name: attaching pass
+    include_vars:
+      file: pass.yml
+
+  - name: Install MariaDB repository
+    apt_repository: repo='deb http://ftp.igh.cnrs.fr/pub/mariadb/repo/10.0/ubuntu "{{ ansible_distribution_release }}" main' state=present  
+
+  - name: Add repository key to the system
+    apt_key: keyserver=keyserver.ubuntu.com id=0xcbcb082a1bb943db
+
+  - name: mysql installation
+    apt:
+      name: "{{ item }}"
+      state: latest
+      force: yes
+    with_items:
+      - mariadb-server-10.0
+      - mariadb-client-10.0
+      - python-mysqldb
+
+  - name: Update MySQL root password for all root accounts
+    mysql_user: name=root host={{ item }} password={{ mysql_root_pass }} state=present
+    with_items:
+      - "{{ ansible_hostname }}"
+      - 127.0.0.1
+      - ::1
+      - localhost
+ 
+  - name: Copy the root credentials as .my.cnf file
+    template: src=root.cnf.j2 dest=~/.my.cnf mode=0600
+
+  - name: Ensure Anonymous user(s) are not in the database
+    mysql_user: name='' host={{ item }} state=absent
+    with_items:
+      - localhost
+      - "{{ ansible_hostname }}"
+
+  - name: Remove the test database
+    mysql_db: name=test state=absent
+    notify:
+      - Restart MySQL
+  
+  - name: Install zabbix proxy
+    apt:  
+      deb: http://repo.zabbix.com/zabbix/3.4/ubuntu/pool/main/z/zabbix/zabbix-proxy-mysql_3.4.0-1+{{ ansible_distribution_release }}_amd64.deb
+      update_cache: yes
+
+  - name: "MySQL | Create database"
+    mysql_db: name=zabbix
+      state=present
+      encoding=utf8
+      collation=utf8_bin
+    register: db_created
+ 
+  - name: Restore zabbix default database
+    mysql_db:
+      name: zabbix
+      state: import
+      target: /usr/share/doc/zabbix-proxy-mysql/schema.sql.gz
+    when: db_created.changed
+
+  - name: change Zabbix conf
+    replace:
+      path: /etc/zabbix/zabbix_proxy.conf
+      regexp: '^DBUser=zabbix'
+      replace: 'DBUser=root'
+      backup: no
+
+  - name: add DB pass to conf
+    lineinfile:
+      path: /etc/zabbix/zabbix_proxy.conf
+      insertafter: '^DBUser=root'
+      line: 'DBPassword={{ mysql_root_pass }}'
+
+  - name: change Zabbix conf
+    replace:
+      path: /etc/zabbix/zabbix_proxy.conf
+      regexp: '^DBName=zabbix_proxy'
+      replace: 'DBName=zabbix'
+      backup: no
+ 
+  - name: change zabbix server
+    replace:
+      path: /etc/zabbix/zabbix_proxy.conf
+      regexp: '^Server=127.0.0.1'
+      replace: 'Server={{ server }}'
+      backup: no
+
+  - name: change zabbix proxy name
+    replace:
+      path: /etc/zabbix/zabbix_proxy.conf
+      regexp: '^Hostname=Zabbix proxy'
+      replace: 'Hostname={{ name }}'
+      backup: no
+
+  - name: PSK config
+    lineinfile:
+      path: /etc/zabbix/zabbix_proxy.psk
+      line: '{{ psk }}'
+      create: yes
+
+  - name: PSK configuration
+    blockinfile:
+      path: /etc/zabbix/zabbix_proxy.conf
+      block: |
+        TLSConnect=psk
+        TLSAccept=psk
+        TLSPSKFile=/etc/zabbix/zabbix_proxy.psk
+        TLSPSKIdentity=PSK 001
+
+  - name: Auth at server API
+    sudo: no
+    delegate_to: 127.0.0.1
+    uri:
+      url: http://{{ server }}/api_jsonrpc.php
+      method: POST
+      body:
+        jsonrpc: 2.0
+        method: user.login
+        params:
+          user: "{{ user }}"
+          password: "{{ password }}"
+        id: 1
+        auth: null
+      body_format: json
+    register: token
+
+  - name: Debug
+    debug:
+      msg: Token is "{{ token.json.result }}"
+
+  - name: Register proxy
+    sudo: no
+    delegate_to: 127.0.0.1
+    uri:
+      url: http://{{ server }}/api_jsonrpc.php
+      method: POST
+      body:
+        method: proxy.create
+        params:
+          host: "{{ name }}"
+          status: 5
+          tls_connect: 2
+          tls_accept: 2
+          tls_psk_identity: "PSK 001"
+          tls_psk: "{{ psk }}"
+        id: 1
+        auth: "{{ token.json.result }}"
+        jsonrpc: 2.0
+      body_format: json
+    register: proxy_register
+
+  - name: Debug
+    debug:
+      msg: New proxy is "{{ proxy_register.json }}"
+    when: proxy_register.json.result is defined
+
+  - name: Error Debug
+    debug:
+      msg: Register error, API response "{{ proxy_register.json }}"
+    when: proxy_register.json.result is not defined
+
+  - name: start zabbix-proxy
+    service: name=zabbix-proxy state=started     
+      
+  handlers:
+    - name: Restart MySQL
+      service: name=mysql state=restarted

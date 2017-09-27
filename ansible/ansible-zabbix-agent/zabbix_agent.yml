@@ -1,0 +1,206 @@
+##title           :zabbix_agent.yml
+#description     :This ansible playbook will install zabbix agent and register it on server
+#author          :Timur Bikbaev
+#date            :20170721
+#version         :0.3
+#usage           :ansible-playbook zabbix_agent.yml -e "variable_host=<agent hostname/ip> server=<zabbixServerIP> name=<agent_name>" --ask-vault-pass --ask-sudo-pass
+#notes           :create pass.yml with command "ansible-vault create pass.yml" 
+#notes           :you need to change section "vars" accordingly
+#ansible_version :2.3.1+
+#requrements     :python ubuntu 14.04 php 5.6 
+#==============================================================================
+---
+- hosts: "{{ variable_host | default('192.168.88.136') }}"
+  sudo: yes
+  tasks:
+  - name: attaching pass
+    include_vars:
+      file: pass.yml
+
+  - name: Install zabbix agent
+    apt:  
+      deb: http://repo.zabbix.com/zabbix/3.4/ubuntu/pool/main/z/zabbix/zabbix-agent_3.4.0-1+{{ ansible_distribution_release }}_amd64.deb
+      update_cache: yes
+    when: ansible_distribution == 'Ubuntu'
+
+  - name: Install zabbix agent
+    yum:
+      name: http://repo.zabbix.com/zabbix/3.2/rhel/{{ ansible_distribution_major_version }}/zabbix-agent_3.2.7-1.el{{ ansible_distribution_major_version }}.x86_64.rpm
+      state: present
+    when: ansible_distribution == 'CentOS'
+
+  - name: change zabbix agent conf
+    replace:
+      path: /etc/zabbix/zabbix_agentd.conf
+      regexp: "{{ item.regexp }}"
+      replace: "{{ item.replace }}"
+      backup: no
+    with_items:
+      - { regexp: '(?<=^Server=)(.*)', replace: '{{ server }}' } 
+      - { regexp: '(?<=^ServerActive=)(.*)', replace: '{{ server }}' }
+      - { regexp: '(?<=^Hostname=)(.*)', replace: '{{ name }}' }
+    when: proxy is not defined
+  
+  - name: change zabbix agent conf(proxy)
+    replace:
+      path: /etc/zabbix/zabbix_agentd.conf
+      regexp: "{{ item.regexp }}"
+      replace: "{{ item.replace }}"
+      backup: no
+    with_items:
+      - { regexp: '(?<=^Server=)(.*)', replace: 'Server={{ server }}' }
+      - { regexp: '(?<=^ServerActive=)(.*)', replace: 'ServerActive={{ proxy }}' }
+      - { regexp: '(?<=^Hostname=)(.*)', replace: 'Hostname={{ name }}' }
+    when: proxy is defined
+  
+  - name: PSK config
+    lineinfile:
+      path: /etc/zabbix/zabbix_agentd.psk
+      line: '{{ psk }}'
+      create: yes
+
+  - name: PSK configuration
+    blockinfile:
+      path: /etc/zabbix/zabbix_agentd.conf
+      block: |
+        TLSConnect=psk
+        TLSAccept=psk
+        TLSPSKFile=/etc/zabbix/zabbix_agentd.psk
+        TLSPSKIdentity=PSK 001
+
+  - name: start zabbix-agent
+    service: name=zabbix-agent state=started     
+ 
+  - name: zabbix server API auth
+    sudo: no
+    delegate_to: 127.0.0.1
+    uri:
+      url: http://{{ server }}/api_jsonrpc.php
+      method: POST
+      body:
+        jsonrpc: 2.0
+        method: user.login
+        params:
+          user: "{{ user }}"
+          password: "{{ password }}"
+        id: 1
+        auth: null
+      body_format: json
+    register: token
+
+  - name: Debug
+    debug:
+      msg: Token is "{{ token.json.result }}"
+
+  - name: Register host
+    sudo: no
+    delegate_to: 127.0.0.1
+    uri:
+      url: http://{{ server }}/api_jsonrpc.php
+      method: POST
+      body:
+        method: host.create
+        params:
+          host: "{{ name }}"
+          interfaces:
+            type: 1
+            main: 1
+            useip: 0
+            ip: 192.168.0.1
+            dns: "{{ variable_host }}"
+            port: 10050
+          tls_connect: 2
+          tls_accept: 2
+          tls_psk_identity: "PSK 001"
+          tls_psk: "{{ psk }}"
+          groups:
+            groupid: "2"
+          templates:
+            templateid: "10001"
+        id: 1
+        auth: "{{ token.json.result }}"
+        jsonrpc: 2.0
+      body_format: json
+    register: host_register
+    when: proxy is not defined
+
+  - name: Debug
+    debug:
+      msg: New host is "{{ host_register.json.result }}"
+    when:
+      - proxy is not defined
+      - host_register.json.result is defined
+
+  - name: Error Debug
+    debug:
+      msg: Register error, API response "{{ host_register }}"
+    when:
+      - proxy is not defined
+      - host_register.json.result is not defined
+
+  - name: Get proxies
+    sudo: no
+    delegate_to: 127.0.0.1
+    uri:
+      url: http://{{ server }}/api_jsonrpc.php
+      method: POST
+      body:
+        jsonrpc: 2.0
+        method: proxy.get
+        params:
+          output: proxyid
+          filter:
+            host: "{{ proxy }}"
+        auth: "{{ token.json.result }}"
+        id: 1
+      body_format: json
+      return_content: yes
+    register: get_proxy
+    when: proxy is defined
+
+  - name: Register host(proxy)
+    sudo: no
+    delegate_to: 127.0.0.1
+    uri:
+      url: http://{{ server }}/api_jsonrpc.php
+      method: POST
+      body:
+        method: host.create
+        params:
+          host: "{{ name }}"
+          interfaces:
+            type: 1
+            main: 1
+            useip: 1
+            ip: "{{ ip }}"
+            dns: "{{ variable_host }}"
+            port: 10050
+          tls_connect: 2
+          tls_accept: 2
+          tls_psk_identity: "PSK 001"
+          tls_psk: "{{ psk }}"
+          groups:
+            groupid: "2"
+          templates:
+            templateid: "10001"
+          proxy_hostid: "{{ get_proxy.json.result[0].proxyid }}"
+        id: 1
+        auth: "{{ token.json.result }}"
+        jsonrpc: 2.0
+      body_format: json
+    register: host_register
+    when: proxy is defined
+
+  - name: Debug
+    debug:
+      msg: New host is "{{ host_register.json.result }}"
+    when: 
+      - proxy is defined
+      - host_register.json.result is defined
+
+  - name: Error Debug
+    debug:
+      msg: Register error, API response "{{ host_register }}"
+    when: 
+      - proxy is defined
+      - host_register.json.result is not defined

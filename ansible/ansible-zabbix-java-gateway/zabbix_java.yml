@@ -1,0 +1,75 @@
+##title           :zabbix_java.yml
+#description     :This ansible playbook will install zabbix java gateway and register it on server
+#author          :Timur Bikbaev
+#date            :20170815
+#version         :0.1
+#usage           :ansible-playbook zabbix_java.yml -e "variable_host=<agent hostname/ip> server=<zabbixServerIP> name=<agent_name>" --ask-vault-pass --ask-sudo-pass
+#notes           :create pass.yml with command "ansible-vault create pass.yml" 
+#ansible_version :2.3.1+
+#requrements     :python 
+#==============================================================================
+---
+- hosts: "{{ variable_host | default('192.168.88.136') }}"
+  sudo: yes
+  tasks:
+  - name: attaching pass
+    include_vars:
+      file: pass.yml
+
+  - name: Install Java
+    apt:
+      name: openjdk-8-jre-headless
+      state: present
+      update_cache: yes
+
+  - name: Install zabbix java gateway
+    apt:  
+      deb: http://repo.zabbix.com/zabbix/3.2/ubuntu/pool/main/z/zabbix/zabbix-java-gateway_3.2.7-1+{{ ansible_distribution_release }}_all.deb
+      update_cache: yes
+    when: ansible_distribution == 'Ubuntu'
+
+#  - name: change zabbix agent conf
+#    replace:
+#      path: /etc/zabbix/zabbix_agentd.conf
+#      regexp: "{{ item.regexp }}"
+#      replace: "{{ item.replace }}"
+#      backup: no
+#    with_items:
+#      - { regexp: '(?<=^Server=)(.*)', replace: '{{ server }}' } 
+#      - { regexp: '(?<=^ServerActive=)(.*)', replace: '{{ server }}' }
+#      - { regexp: '(?<=^Hostname=)(.*)', replace: '{{ name }}' }
+#    when: proxy is not defined
+  
+#  - name: PSK config
+#    lineinfile:
+#      path: /etc/zabbix/zabbix_java.psk
+#      line: '{{ psk }}'
+#      create: yes
+
+#  - name: PSK configuration
+#    blockinfile:
+#      path: /etc/zabbix/zabbix_java.conf
+#      block: |
+#        TLSConnect=psk
+#        TLSAccept=psk
+#        TLSPSKFile=/etc/zabbix/zabbix_agentd.psk
+#        TLSPSKIdentity=PSK 001
+
+  - name: start zabbix-java-gateway
+    service: name=zabbix-java-gateway state=started     
+
+
+  - name: add java gateway to server config
+    delegate_to: "{{ server }}"
+    replace:
+      path: /etc/zabbix/zabbix_server.conf
+      regexp: "{{ item.regexp }}"
+      replace: "{{ item.replace }}"
+      backup: no
+    with_items:
+      - { regexp: '^# JavaGateway=', replace: 'JavaGateway={{ variable_host }}' }
+      - { regexp: '^# JavaGatewayPort=10052', replace: 'JavaGatewayPort=10052' }
+
+  - name: restart Zabbix server
+    delegate_to: "{{ server }}"
+    service: name=zabbix-server state=restarted

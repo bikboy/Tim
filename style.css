@@ -7,3 +7,31 @@ img#photo {
 	width: 100px;
 	height: auto;
 }
+body {
+   margin: 20px;
+}
+
+#clouds{
+	position: absolute;
+	left: 2%;
+}
+#iaac {
+	position: absolute;
+	left:12%;
+}
+#scripting {
+	position: absolute;
+	left:23%;
+}
+#telemetry {
+	position: absolute;
+	left:32%;
+}
+#db {
+	position: absolute;
+	left:42%;
+}
+#os {
+	position: absolute;
+	left:52%;
+}
