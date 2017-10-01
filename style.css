@@ -10,7 +10,9 @@ img#photo {
 body {
    margin: 20px;
 }
-
+#skills {
+	position: relative;
+}
 #clouds{
 	position: absolute;
 	left: 2%;
@@ -19,19 +21,36 @@ body {
 	position: absolute;
 	left:12%;
 }
+#cicd {
+	position: absolute;
+	left:26%;
+}
+#build {
+	position: absolute;
+	left:36%;
+}
+
 #scripting {
 	position: absolute;
-	left:23%;
+	left:46%;
 }
 #telemetry {
 	position: absolute;
-	left:32%;
+	left:56%;
 }
 #db {
 	position: absolute;
-	left:42%;
+	left:66%;
 }
 #os {
 	position: absolute;
-	left:52%;
+	left:76%;
+}
+#java {
+	position: absolute;
+	left:86%;
+}
+#summary {
+	top: 50%;
+	position: absolute;
 }
