@@ -51,6 +51,10 @@ body {
 	left:86%;
 }
 #summary {
-	top: 50%;
+	top: 40%;
 	position: absolute;
+}
+#experience {
+	position: absolute;
+	top: 70%;
 }
