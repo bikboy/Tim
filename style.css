@@ -11,50 +11,43 @@ body {
    margin: 20px;
 }
 #skills {
-	position: relative;
+	display: flex;
+	margin: 20px;	
 }
 #clouds{
-	position: absolute;
-	left: 2%;
+	margin: 20px;
 }
 #iaac {
-	position: absolute;
-	left:12%;
+	margin: 20px;
 }
 #cicd {
-	position: absolute;
-	left:26%;
+	margin: 20px;
 }
 #build {
-	position: absolute;
-	left:36%;
+	margin: 20px;
 }
 
 #scripting {
-	position: absolute;
-	left:46%;
+	margin: 20px;
 }
 #telemetry {
-	position: absolute;
-	left:56%;
+	margin: 20px;
 }
 #db {
-	position: absolute;
-	left:66%;
+	margin: 20px;
 }
 #os {
-	position: absolute;
-	left:76%;
+	margin: 20px;
 }
 #java {
-	position: absolute;
-	left:86%;
+	margin: 20px;
 }
+
 #summary {
-	top: 40%;
-	position: absolute;
+	
+	position: relative;
 }
 #experience {
-	top: 70%;
-	position: absolute;
+	
+	position: relative;
 }
